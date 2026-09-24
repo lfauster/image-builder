@@ -1788,6 +1788,25 @@ image_types:
             GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader -i 0 | head -n1)
             echo "Detected GPU: ${GPU_NAME}"
 
+            start_fabricmanager() {
+                # A100: NVSwitch PCI 10de:1af1
+                # H100: NVSwitch PCI 10de:22a3 (also used by H200)
+                local a100_nvswitches h100_nvswitches
+                a100_nvswitches=$(lspci -d 10de:1af1 2>/dev/null | wc -l)
+                h100_nvswitches=$(lspci -d 10de:22a3 2>/dev/null | wc -l)
+
+                if [[ "${a100_nvswitches}" -gt 0 || "${h100_nvswitches}" -gt 0 ]]; then
+                    echo "NVSwitch detected (A100=${a100_nvswitches} H100=${h100_nvswitches}); enabling nvidia-fabricmanager"
+                    if ! systemctl enable --now nvidia-fabricmanager; then
+                        echo "warning: failed to enable/start nvidia-fabricmanager"
+                    fi
+                else
+                    echo "No A100/H100 NVSwitch detected; leaving nvidia-fabricmanager disabled"
+                fi
+            }
+
+            start_fabricmanager
+
             # Prints: <mem_mhz> <gpu_mhz> <arch>
             # arch: turing (no -lmc), hopper (-lmcd), default (-lmc)
             resolve_profile() {
@@ -1874,6 +1893,9 @@ image_types:
         - "tuned"
         # 'ami-nvidia' specific
         - *nvidia_gpu_tweaks_unit
+      disabled_services:
+        # Only enable at boot on NVSwitch instances (see nvidia-gpu-tweaks script)
+        - "nvidia-fabricmanager"
     blueprint:
       supported_options: *supported_options_disk
 
