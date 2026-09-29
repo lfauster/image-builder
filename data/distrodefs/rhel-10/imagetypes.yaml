@@ -1748,7 +1748,7 @@ image_types:
   "ami-nvidia":
     <<: *ami
     name_aliases: []
-    default_size: "40 GiB"
+    default_size: "20 GiB"
     platforms:
       - <<: *x86_64_bios_platform
         image_format: "raw"
@@ -1756,10 +1756,11 @@ image_types:
       os:
         - *ami_pkgset
         - include:
+            - "cuda-toolkit"
+            - "kmod-nvidia-open"
+            - "libnccl"
             - "nvidia-driver"
             - "nvidia-driver-cuda"
-            - "kmod-nvidia-open"
-            - "cuda-toolkit-13-2"
             - "nvidia-fabricmanager"
             - "nvidia-persistenced"
     image_config:
