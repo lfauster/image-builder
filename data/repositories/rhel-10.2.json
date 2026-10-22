@@ -90,6 +90,14 @@
       "image_type_tags": [
         "ami-nvidia"
       ]
+    },
+    {
+      "name": "efa-cuda",
+      "baseurl": "http://coprbe.devel.redhat.com/results/lfauster/efa-cuda/rhel-10-x86_64/",
+      "check_gpg": false,
+      "image_type_tags": [
+        "ami-nvidia"
+      ]
     }
   ]
 }

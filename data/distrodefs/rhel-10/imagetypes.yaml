@@ -1763,6 +1763,12 @@ image_types:
             - "nvidia-driver-cuda-3:595*"
             - "nvidia-fabricmanager-595*"
             - "nvidia-persistenced-3:595*"
+            # EFA CUDA (from COPR)
+            - "efa-config"
+            - "gdrcopy"
+            - "libfabric-cuda"
+            - "libnccl-ofi"
+            - "openmpi-cuda"
     image_config:
       <<: *ami_image_config
       kernel_options:
