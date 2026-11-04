@@ -64,6 +64,34 @@ func TestRH10DistroFactory(t *testing.T) {
 	}
 }
 
+func TestRhel10AMINvidiaAvailability(t *testing.T) {
+	for _, tc := range []struct {
+		distro string
+		want   bool
+	}{
+		{"rhel-10.0", false},
+		{"rhel-10.1", false},
+		{"rhel-10.2", true},
+		{"rhel-10.3", true},
+		{"rhel-10.4", true},
+		{"rhel-10.10", true},
+		{"centos-10", false},
+	} {
+		t.Run(tc.distro, func(t *testing.T) {
+			dist := DistroFactory(tc.distro)
+			require.NotNil(t, dist)
+			arch, err := dist.GetArch("x86_64")
+			require.NoError(t, err)
+			_, err = arch.GetImageType("ami-nvidia")
+			if tc.want {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+			}
+		})
+	}
+}
+
 func TestRhel10_NoBootPartition(t *testing.T) {
 	for _, distroName := range []string{"rhel-10.0", "centos-10"} {
 		dist := DistroFactory(distroName)
