@@ -1788,6 +1788,7 @@ image_types:
             - "cuda-compat"
             - "cuda-toolkit"
             - "libnccl"
+            - "nvidia-container-toolkit"
             - "nvidia-driver-3:595*"
             - "nvidia-driver-cuda-3:595*"
             - "nvidia-fabricmanager-595*"
