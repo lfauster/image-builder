@@ -919,6 +919,35 @@ func TestRunInstanceEC2(t *testing.T) {
 
 }
 
+func TestLaunchInstanceEC2WithoutWaiting(t *testing.T) {
+	fake := &fakeEC2Client{runInstances: &ec2.RunInstancesOutput{
+		Instances: []ec2types.Instance{{InstanceId: aws.String("i-test")}},
+	}}
+	client := awscloud.NewAWSForTest(fake, nil, nil, nil)
+	for range 2 {
+		id, err := client.LaunchInstanceEC2("ami-test", "sg-test", "#cloud-config", "t2.micro", "subnet-test")
+		require.NoError(t, err)
+		require.Equal(t, "i-test", id)
+	}
+	require.Len(t, fake.runInstancesCalls, 2)
+	require.Empty(t, fake.describeInstancesCalls)
+	for _, request := range fake.runInstancesCalls {
+		require.Equal(t, int32(1), aws.ToInt32(request.MinCount))
+		require.Equal(t, int32(1), aws.ToInt32(request.MaxCount))
+		require.Equal(t, []string{"sg-test"}, request.SecurityGroupIds)
+		require.Equal(t, "subnet-test", aws.ToString(request.SubnetId))
+	}
+}
+
+func TestLaunchInstanceEC2RejectsIncompleteResponse(t *testing.T) {
+	for _, response := range []*ec2.RunInstancesOutput{nil, {}, {Instances: []ec2types.Instance{{}}}} {
+		fake := &fakeEC2Client{runInstances: response}
+		client := awscloud.NewAWSForTest(fake, nil, nil, nil)
+		_, err := client.LaunchInstanceEC2("ami-test", "sg-test", "", "t2.micro", "")
+		require.Error(t, err)
+	}
+}
+
 func TestTerminateInstanceEC2(t *testing.T) {
 	type testCase struct {
 		name                        string
