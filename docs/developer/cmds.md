@@ -141,13 +141,19 @@ where:
 - `${PATH_TO_USER_DATA}` points to a cloud-init user-data file. Its contents
   are passed to EC2 unchanged.
 
+The `setup` subcommand launches one instance by default. Pass `--instances N`
+to launch N instances from the same AMI, with the same instance type and user
+data. Pass `--efa` to attach an EFA interface to each instance and allow
+traffic among members of their security group. EFA requires an EFA-capable
+instance type, `--vpc-id`, and `--subnet-id`.
+
 AWS credentials are loaded from the default AWS credential chain. They can
 instead be supplied explicitly with `--access-key-id`, `--secret-access-key`,
 and optionally `--session-token`.
 
-The command creates a security group configured to allow SSH access and
-launches an instance from the AMI. It waits until the instance is ready and
-prints its public IP address, falling back to its private IP address when no
+The command creates a security group configured to allow SSH access, launches
+the requested instances, and waits for each instance to run. It prints each
+instance's public IP address, falling back to its private IP address when no
 public address is assigned. When using a private address, the host running the
 command must have a route to the selected subnet so it can connect to the
 instance over SSH.
