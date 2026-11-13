@@ -925,7 +925,7 @@ func TestLaunchInstanceEC2WithoutWaiting(t *testing.T) {
 	}}
 	client := awscloud.NewAWSForTest(fake, nil, nil, nil)
 	for range 2 {
-		id, err := client.LaunchInstanceEC2("ami-test", "sg-test", "#cloud-config", "t2.micro", "subnet-test")
+		id, err := client.LaunchInstanceEC2("ami-test", "sg-test", "#cloud-config", "t2.micro", "subnet-test", false)
 		require.NoError(t, err)
 		require.Equal(t, "i-test", id)
 	}
@@ -943,8 +943,50 @@ func TestLaunchInstanceEC2RejectsIncompleteResponse(t *testing.T) {
 	for _, response := range []*ec2.RunInstancesOutput{nil, {}, {Instances: []ec2types.Instance{{}}}} {
 		fake := &fakeEC2Client{runInstances: response}
 		client := awscloud.NewAWSForTest(fake, nil, nil, nil)
-		_, err := client.LaunchInstanceEC2("ami-test", "sg-test", "", "t2.micro", "")
+		_, err := client.LaunchInstanceEC2("ami-test", "sg-test", "", "t2.micro", "", false)
 		require.Error(t, err)
+	}
+}
+
+func TestLaunchEFAInstanceEC2(t *testing.T) {
+	fake := &fakeEC2Client{runInstances: &ec2.RunInstancesOutput{
+		Instances: []ec2types.Instance{{InstanceId: aws.String("i-efa")}},
+	}}
+	client := awscloud.NewAWSForTest(fake, nil, nil, nil)
+	id, err := client.LaunchInstanceEC2("ami-test", "sg-test", "#cloud-config", "g7.12xlarge", "subnet-test", true)
+	require.NoError(t, err)
+	require.Equal(t, "i-efa", id)
+	require.Len(t, fake.runInstancesCalls, 1)
+	request := fake.runInstancesCalls[0]
+	require.Equal(t, int32(1), aws.ToInt32(request.MinCount))
+	require.Equal(t, int32(1), aws.ToInt32(request.MaxCount))
+	require.Empty(t, request.SecurityGroupIds)
+	require.Nil(t, request.SubnetId)
+	require.Len(t, request.NetworkInterfaces, 1)
+	interfaceSpec := request.NetworkInterfaces[0]
+	require.Equal(t, "efa", aws.ToString(interfaceSpec.InterfaceType))
+	require.Equal(t, int32(0), aws.ToInt32(interfaceSpec.NetworkCardIndex))
+	require.Equal(t, int32(0), aws.ToInt32(interfaceSpec.DeviceIndex))
+	require.Equal(t, "subnet-test", aws.ToString(interfaceSpec.SubnetId))
+	require.Equal(t, []string{"sg-test"}, interfaceSpec.Groups)
+	require.True(t, aws.ToBool(interfaceSpec.DeleteOnTermination))
+}
+
+func TestAuthorizeSecurityGroupSelfEC2(t *testing.T) {
+	fake := &fakeEC2Client{}
+	client := awscloud.NewAWSForTest(fake, nil, nil, nil)
+	require.NoError(t, client.AuthorizeSecurityGroupSelfEC2("sg-test"))
+	require.Len(t, fake.authorizeSecurityGroupIngressCalls, 1)
+	require.Len(t, fake.authorizeSecurityGroupEgressCalls, 1)
+	ingress := fake.authorizeSecurityGroupIngressCalls[0]
+	egress := fake.authorizeSecurityGroupEgressCalls[0]
+	require.Equal(t, "sg-test", aws.ToString(ingress.GroupId))
+	require.Equal(t, "sg-test", aws.ToString(egress.GroupId))
+	for _, permissions := range [][]ec2types.IpPermission{ingress.IpPermissions, egress.IpPermissions} {
+		require.Len(t, permissions, 1)
+		require.Equal(t, "-1", aws.ToString(permissions[0].IpProtocol))
+		require.Len(t, permissions[0].UserIdGroupPairs, 1)
+		require.Equal(t, "sg-test", aws.ToString(permissions[0].UserIdGroupPairs[0].GroupId))
 	}
 }
 
